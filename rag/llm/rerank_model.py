@@ -14,6 +14,7 @@
 #  limitations under the License.
 #
 import json
+import logging
 from abc import ABC
 from urllib.parse import urljoin
 from typing import Tuple, List
@@ -377,7 +378,7 @@ class VoyageRerank(Base):
 class QWenRerank(Base):
     _FACTORY_NAME = "Tongyi-Qianwen"
 
-    def __init__(self, key, model_name="gte-rerank", base_url=None, **kwargs):
+    def __init__(self, key, model_name="gte-rerank", **kwargs):
         import dashscope
         self.api_key = key
         self.model_name = dashscope.TextReRank.Models.gte_rerank if model_name is None else model_name
@@ -421,7 +422,7 @@ class HuggingfaceRerank(Base):
     _FACTORY_NAME = "HuggingFace"
 
     @staticmethod
-    def post(query: str, texts: List, url="127.0.0.1"):
+    def post(query: str, texts: list, url: str = "http://127.0.0.1"):
         exc = None
         scores = [0 for _ in range(len(texts))]
         batch_size = 8
@@ -430,12 +431,12 @@ class HuggingfaceRerank(Base):
         if not base_url.startswith(("http://", "https://")):
             base_url = f"http://{base_url}"
         # Only append "/rerank" when endpoint does not already end with it
-        request_url = base_url if base_url.endswith("/rerank") else f"{base_url}/rerank"
+        endpoint = base_url if base_url.endswith("/rerank") else f"{base_url}/rerank"
 
         for i in range(0, len(texts), batch_size):
             try:
                 res = requests.post(
-                    request_url, headers={"Content-Type": "application/json"}, 
+                    endpoint, headers={"Content-Type": "application/json"}, 
                     json={"query": query, "texts": texts[i:i+batch_size], "raw_scores": False, "truncate": True},
                     timeout=30
                 )
@@ -557,6 +558,17 @@ class JiekouAIRerank(JinaRerank):
         if not base_url:
             base_url = "https://api.jiekou.ai/openai/v1/rerank"
         super().__init__(key, model_name, base_url)
+
+
+class FuturMixRerank(OpenAI_APIRerank):
+    _FACTORY_NAME = "FuturMix"
+
+    def __init__(self, key, model_name, base_url="https://futurmix.ai/v1/rerank"):
+        if not base_url:
+            base_url = "https://futurmix.ai/v1/rerank"
+        super().__init__(key, model_name, base_url)
+        logging.info("[FuturMix] Rerank initialized with model %s", model_name)
+
 
 class RAGconRerank(Base):
     _FACTORY_NAME = "RAGcon"
